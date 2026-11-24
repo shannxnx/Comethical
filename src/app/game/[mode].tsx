@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FeedbackSheet } from '@/components/feedback/FeedbackSheet';
@@ -92,6 +92,17 @@ export default function GameScreen() {
   const inProgress = IN_PROGRESS.includes(phase) && !!sessionId;
   usePreventRemove(inProgress, () => confirmLeave());
 
+  // Android back button / edge-swipe gesture: never exit the session silently.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (phase === 'complete') return false;
+      if (inProgress) confirmLeave();
+      else router.replace('/home');
+      return true;
+    });
+    return () => sub.remove();
+  }, [phase, inProgress, confirmLeave]);
+
   const confirmEnd = useCallback(() => {
     Alert.alert('End session?', 'Wrap up this endless run and see your results.', [
       { text: 'Keep going', style: 'cancel' },
@@ -165,7 +176,8 @@ export default function GameScreen() {
           </Banner>
         ) : null}
 
-        <View className="flex-1">
+        {/* Extra side inset keeps drags away from the Android edge "back" gesture zone. */}
+        <View style={{ flex: 1, paddingHorizontal: 12 }}>
           {phase === 'submitting' ? (
             <View className="absolute inset-0 items-center justify-center">
               <ActivityIndicator color={colors.accent} />

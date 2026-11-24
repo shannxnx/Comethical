@@ -52,6 +52,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
   }, [enter]);
 
   const commit = useCallback((direction: SwipeDirection) => onSwipe(direction), [onSwipe]);
+  const tick = useCallback(() => feedback.thresholdTick(), []);
 
   const flyOut = (direction: SwipeDirection, velocity = 0) => {
     'worklet';
@@ -86,13 +87,13 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
       const zone = e.translationX <= -threshold ? -1 : e.translationX >= threshold ? 1 : 0;
       if (zone !== crossed.value) {
         crossed.value = zone;
-        if (zone !== 0) scheduleOnRN(feedback.thresholdTick);
+        if (zone !== 0) scheduleOnRN(tick);
       }
     },
     onDeactivate: (e) => {
       'worklet';
       if (flying.value) return;
-      const direction = resolveSwipe(e.translationX, e.velocityX, width.value);
+      const direction = resolveSwipe(e.translationX, e.velocityX, width.value, SWIPE);
       crossed.value = 0;
       if (direction) {
         flyOut(direction, e.velocityX);

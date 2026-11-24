@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { BackHandler, Pressable, View } from 'react-native';
 import Animated, { FadeIn, FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -75,6 +75,17 @@ export default function Onboarding() {
     router.replace('/');
   }, [completeOnboarding]);
 
+  // Android back (button or edge swipe) goes to the previous step instead of leaving the app.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step === 0) return false;
+      setAnswer(null);
+      setStep((s) => Math.max(0, s - 1));
+      return true;
+    });
+    return () => sub.remove();
+  }, [step]);
+
   const onSwipe = useCallback((direction: SwipeDirection) => {
     const selected = directionToAnswer(direction);
     setAnswer(selected);
@@ -147,7 +158,7 @@ export default function Onboarding() {
             </AppText>
           </View>
           {answer === null ? (
-            <View className="flex-1 pb-2">
+            <View style={{ flex: 1, paddingBottom: 8, paddingHorizontal: 12 }}>
               <SwipeCard scenario={ONBOARDING_SCENARIO} enabled onSwipe={onSwipe} />
             </View>
           ) : (

@@ -39,6 +39,7 @@
     "eslint-config-expo": "~58.0.4",
     "jest": "~30.5.2",
     "jest-expo": "~58.0.15",
+    "supabase": "^3.4.0",
     "tailwindcss": "^3.4.17",
     "typescript": "~6.0.3"
   },
@@ -54,7 +55,8 @@
     "doctor": "expo-doctor",
     "sync:core": "node scripts/sync-core.mjs",
     "seed:sql": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-seed-sql.mjs",
-    "sounds": "node scripts/generate-sounds.mjs"
+    "sounds": "node scripts/generate-sounds.mjs",
+    "db:setup-sql": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-seed-sql.mjs && node scripts/build-setup-sql.mjs"
   },
   "private": true,
   "jest": {

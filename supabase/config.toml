@@ -18,10 +18,9 @@ sql_paths = ["./seed.sql"]
 enabled = true
 site_url = "comethical://"
 additional_redirect_urls = ["comethical://reset-password"]
-enable_signup = true
 
 [auth.email]
-enable_signup = true
+enabled = true
 enable_confirmations = false
 
 # Player endpoints verify the user JWT inside the function (requireUser) and return
