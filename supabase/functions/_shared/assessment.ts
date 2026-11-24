@@ -48,6 +48,7 @@ export async function assessScenario(s: ScenarioForAssessment): Promise<AiAssess
     }),
     schema: ASSESSMENT_SCHEMA,
     temperature: 0.2,
+    budgetMs: 35_000,
   });
   const result = validateAiAssessment(raw);
   if (!result.ok) throw new HttpError(502, 'ai_invalid', `Invalid assessment: ${result.errors.join(' ')}`);
@@ -74,13 +75,14 @@ export async function assessAndStore(
   model: string,
 ): Promise<AssessmentOutcome[]> {
   const autoApprove = (Deno.env.get('AUTO_APPROVE_VALIDATED') ?? 'false').toLowerCase() === 'true';
-  const outcomes: AssessmentOutcome[] = [];
-  for (const s of scenarios) {
+  // Reviews run in parallel so a batch fits inside the request time limit.
+  return await Promise.all(scenarios.map(async (s): Promise<AssessmentOutcome> => {
     try {
       const a = await assessScenario(s);
       const update: Record<string, unknown> = {
         difficulty_score: a.difficultyScore,
         difficulty_reasoning: a.difficultyReasoning,
+        difficulty_factors: a.factors,
         ai_model: model,
       };
       if (mode === 'validate') {
@@ -90,10 +92,9 @@ export async function assessAndStore(
       }
       const { error } = await admin.from('scenarios').update(update).eq('id', s.id);
       if (error) throw new Error(error.message);
-      outcomes.push({ id: s.id, ok: true, status: update.approval_status as string | undefined, difficulty: a.difficultyScore });
+      return { id: s.id, ok: true, status: update.approval_status as string | undefined, difficulty: a.difficultyScore };
     } catch (error) {
-      outcomes.push({ id: s.id, ok: false, error: error instanceof Error ? error.message : String(error) });
+      return { id: s.id, ok: false, error: error instanceof Error ? error.message : String(error) };
     }
-  }
-  return outcomes;
+  }));
 }

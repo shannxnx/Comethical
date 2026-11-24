@@ -112,7 +112,7 @@ export default function Profile() {
         ) : null}
         <View className="rounded-full px-3 py-1" style={{ backgroundColor: demo ? 'rgba(245,158,11,0.15)' : 'rgba(45,212,191,0.15)' }}>
           <AppText variant="caption" tone={demo ? 'streak' : 'accent'}>
-            {demo ? 'Local demo profile' : 'Online account'}
+            {demo ? 'Local demo profile' : stats?.isAdmin ? 'Administrator' : 'Online account'}
           </AppText>
         </View>
       </View>

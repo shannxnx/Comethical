@@ -95,12 +95,24 @@ describe('assessment and approval', () => {
     ambiguityReason: null,
     qualityIssues: [],
     verdict: 'approve',
+    factors: null,
   };
 
   it('validates assessments', () => {
     expect(validateAiAssessment(assessment).ok).toBe(true);
     expect(validateAiAssessment({ ...assessment, verdict: 'sure' }).ok).toBe(false);
     expect(validateAiAssessment({ ...assessment, difficultyScore: 0 }).ok).toBe(false);
+  });
+
+  it('parses and clamps the difficulty factor breakdown', () => {
+    const factors = {
+      contextualComplexity: 3, principlesInvolved: 2, competingResponsibilities: 1, technicalKnowledge: 12,
+      criticalThinking: 4, potentialConsequences: 5, decisionAmbiguity: 0,
+    };
+    const r = validateAiAssessment({ ...assessment, factors });
+    expect(r.ok && r.value.factors).toMatchObject({ technicalKnowledge: 10, decisionAmbiguity: 1 });
+    const missing = validateAiAssessment({ ...assessment, factors: { contextualComplexity: 3 } });
+    expect(missing.ok && missing.value.factors).toBeNull();
   });
 
   it('flags ambiguous scenarios instead of forcing an answer', () => {

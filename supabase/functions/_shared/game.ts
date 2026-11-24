@@ -101,6 +101,7 @@ export async function logGeneration(
     status: 'success' | 'partial' | 'failed';
     errors?: unknown;
     durationMs: number;
+    requestedBy?: string;
   },
 ): Promise<void> {
   const { error } = await admin.from('ai_generation_logs').insert({
@@ -112,6 +113,7 @@ export async function logGeneration(
     validation_status: entry.status,
     error_details: entry.errors ?? null,
     duration_ms: entry.durationMs,
+    requested_by: entry.requestedBy ?? null,
   });
   if (error) console.error('Failed to write ai_generation_logs', error.message);
 }

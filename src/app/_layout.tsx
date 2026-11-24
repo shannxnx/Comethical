@@ -56,6 +56,7 @@ export default function RootLayout() {
               {/* Gameplay is outside the tabs and cannot be swiped away mid-session. */}
               <Stack.Screen name="game/[mode]" options={{ gestureEnabled: false, animation: 'slide_from_bottom' }} />
               <Stack.Screen name="game/results" options={{ gestureEnabled: false, animation: 'fade' }} />
+              <Stack.Screen name="admin/[id]" options={{ animation: 'slide_from_right' }} />
             </Stack.Protected>
           </Stack>
         </ThemeRoot>

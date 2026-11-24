@@ -152,6 +152,7 @@ export class OnlineRepository implements GameRepository {
       bestScores,
       bestStreaks,
       pendingReviewCount: pending.count ?? 0,
+      isAdmin: p.role === 'admin',
     };
   }
 
@@ -201,7 +202,7 @@ export class OnlineRepository implements GameRepository {
 }
 
 /** Converts a functions.invoke error into an AppError with the server's code + message. */
-async function parseFunctionError(error: unknown): Promise<AppError> {
+export async function parseFunctionError(error: unknown): Promise<AppError> {
   const context = (error as { context?: unknown }).context;
   if (context && typeof (context as Response).json === 'function') {
     try {

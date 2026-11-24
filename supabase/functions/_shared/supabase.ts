@@ -24,6 +24,15 @@ export async function requireUser(req: Request, admin: SupabaseClient): Promise<
   return { id: data.user.id };
 }
 
+/** Signed-in user whose profile role is "admin" (set only via SQL / admin_emails), or throws 403. */
+export async function requireAdminUser(req: Request, admin: SupabaseClient): Promise<{ id: string }> {
+  const user = await requireUser(req, admin);
+  const { data, error } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  if (error) throw new HttpError(500, 'db_error', error.message);
+  if (data?.role !== 'admin') throw new HttpError(403, 'forbidden', 'Admin access required.');
+  return user;
+}
+
 /** Admin endpoints (AI generation / assessment) require a shared secret header. */
 export function requireAdmin(req: Request): void {
   const expected = Deno.env.get('ADMIN_API_KEY');

@@ -20,6 +20,31 @@ export interface AiScenario {
   ambiguous: boolean;
 }
 
+/** The seven criteria the difficulty score is based on (each 1 = low, 10 = high). */
+export const DIFFICULTY_FACTORS = [
+  { key: 'contextualComplexity', label: 'Context' },
+  { key: 'principlesInvolved', label: 'Principles' },
+  { key: 'competingResponsibilities', label: 'Conflicts' },
+  { key: 'technicalKnowledge', label: 'Knowledge' },
+  { key: 'criticalThinking', label: 'Reasoning' },
+  { key: 'potentialConsequences', label: 'Consequences' },
+  { key: 'decisionAmbiguity', label: 'Ambiguity' },
+] as const;
+
+export type DifficultyFactorKey = (typeof DIFFICULTY_FACTORS)[number]['key'];
+export type DifficultyFactors = Record<DifficultyFactorKey, number>;
+
+export function validateDifficultyFactors(raw: unknown): DifficultyFactors | null {
+  if (!isRecord(raw)) return null;
+  const out: Partial<DifficultyFactors> = {};
+  for (const { key } of DIFFICULTY_FACTORS) {
+    const v = raw[key];
+    if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+    out[key] = Math.min(10, Math.max(1, Math.round(v)));
+  }
+  return out as DifficultyFactors;
+}
+
 export interface AiAssessment {
   difficultyScore: number;
   difficultyReasoning: string;
@@ -27,6 +52,8 @@ export interface AiAssessment {
   ambiguityReason: string | null;
   qualityIssues: string[];
   verdict: 'approve' | 'flag' | 'reject';
+  /** Per-criterion breakdown; null when the model omitted or malformed it. */
+  factors: DifficultyFactors | null;
 }
 
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
@@ -174,6 +201,7 @@ export function validateAiAssessment(raw: unknown): ValidationResult<AiAssessmen
       ambiguityReason: cleanString(raw.ambiguityReason),
       qualityIssues,
       verdict: verdict as AiAssessment['verdict'],
+      factors: validateDifficultyFactors(raw.factors),
     },
   };
 }

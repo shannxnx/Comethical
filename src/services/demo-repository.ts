@@ -460,6 +460,7 @@ export class DemoRepository implements GameRepository {
       bestScores: { ...data.bestScores },
       bestStreaks: { ...data.bestStreaks },
       pendingReviewCount: Object.values(data.review).filter((r) => !r.reviewed).length,
+      isAdmin: false,
     };
   }
 

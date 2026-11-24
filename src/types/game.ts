@@ -97,6 +97,8 @@ export interface PlayerStats {
   bestScores: Partial<Record<GameModeId, number>>;
   bestStreaks: Partial<Record<GameModeId, number>>;
   pendingReviewCount: number;
+  /** Admins see the Admin tab (enforced again on the server). */
+  isAdmin: boolean;
 }
 
 export type ReportReason = 'incorrect_answer' | 'ambiguous' | 'unclear' | 'offensive' | 'other';

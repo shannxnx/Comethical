@@ -24,6 +24,7 @@ export type Database = {
           total_answered: number;
           total_correct: number;
           sessions_completed: number;
+          role: 'player' | 'admin';
           created_at: string;
           updated_at: string;
         };
