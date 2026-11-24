@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# secrets
+.env
+supabase/.env
+supabase/functions/.env
+supabase/.temp/
+supabase/functions/deno.lock
