@@ -45,3 +45,8 @@ verify_jwt = false
 
 [functions.admin-scenarios]
 verify_jwt = false
+
+# Checks its own auth per action: "check" works signed out, "redeem" needs a signed-in
+# user, and create / list / revoke need an admin.
+[functions.admin-invites]
+verify_jwt = false

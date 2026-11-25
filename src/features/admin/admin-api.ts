@@ -6,15 +6,16 @@ import type { AdminScenario, AdminStats, GenerateRequest, GenerateResult, ListQu
 /** Gemini generation can take a while (generation + an independent review per scenario). */
 const TIMEOUT_MS = 120_000;
 
-async function call<T>(action: string, body: Record<string, unknown> = {}): Promise<T> {
+/** Calls an Edge Function action with a timeout and friendly errors. */
+export async function invokeFunction<T>(fn: string, action: string, body: Record<string, unknown> = {}, timeoutMs = TIMEOUT_MS): Promise<T> {
   const supabase = getSupabase();
   if (!supabase) throw new AppError('offline_mode', 'Admin tools need the Supabase backend.');
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new AppError('timeout', 'The server took too long. Please try again.', true)), TIMEOUT_MS);
+    timer = setTimeout(() => reject(new AppError('timeout', 'The server took too long. Please try again.', true)), timeoutMs);
   });
   try {
-    const { data, error } = await Promise.race([supabase.functions.invoke<T>('admin-scenarios', { body: { action, ...body } }), timeout]);
+    const { data, error } = await Promise.race([supabase.functions.invoke<T>(fn, { body: { action, ...body } }), timeout]);
     if (error) throw await parseFunctionError(error);
     if (data == null) throw new AppError('empty_response', 'The server sent an empty response.', true);
     return data;
@@ -25,6 +26,8 @@ async function call<T>(action: string, body: Record<string, unknown> = {}): Prom
     if (timer) clearTimeout(timer);
   }
 }
+
+const call = <T>(action: string, body: Record<string, unknown> = {}) => invokeFunction<T>('admin-scenarios', action, body);
 
 export interface ListResult {
   scenarios: AdminScenario[];

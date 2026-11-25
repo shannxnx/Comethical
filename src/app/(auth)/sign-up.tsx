@@ -1,13 +1,11 @@
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
 
-import { AppText, Banner, Button, Screen, SegmentedControl, TextField } from '@/components/ui';
+import { Banner, Button, Screen, TextField } from '@/components/ui';
 import { AuthHeader } from '@/components/ui/AuthHeader';
 import type { TextInputHandle } from '@/components/ui/TextField';
 import { validateEmail, validatePassword, validateUsername } from '@/features/auth/validation';
-import { getSupabase } from '@/lib/supabase';
-import { useAuthStore, type AccountType } from '@/stores/auth-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function SignUp() {
   const signUp = useAuthStore((s) => s.signUp);
@@ -22,26 +20,6 @@ export default function SignUp() {
   const emailRef = useRef<TextInputHandle>(null);
   const passwordRef = useRef<TextInputHandle>(null);
   const confirmRef = useRef<TextInputHandle>(null);
-  const [accountType, setAccountType] = useState<AccountType>('player');
-  const [adminSignupOpen, setAdminSignupOpen] = useState(true);
-
-  // Hide the Admin option when the project has switched admin sign-ups off.
-  useEffect(() => {
-    let active = true;
-    getSupabase()
-      ?.from('app_settings')
-      .select('allow_admin_signup')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!active || !data) return;
-        setAdminSignupOpen(data.allow_admin_signup);
-        if (!data.allow_admin_signup) setAccountType('player');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const submit = async () => {
     if (loading) return;
     const next = {
@@ -55,7 +33,7 @@ export default function SignUp() {
     if (Object.values(next).some(Boolean)) return;
     setLoading(true);
     try {
-      const { needsConfirmation } = await signUp(email, password, username, adminSignupOpen ? accountType : 'player');
+      const { needsConfirmation } = await signUp(email, password, username);
       if (needsConfirmation) setNotice('Check your inbox to confirm your email, then sign in.');
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Sign up failed.');
@@ -72,27 +50,6 @@ export default function SignUp() {
         <Banner tone="info" actionLabel="Sign in" onAction={() => router.replace('/sign-in')}>
           {notice}
         </Banner>
-      ) : null}
-      {adminSignupOpen ? (
-        <View className="gap-2">
-          <AppText variant="caption" tone="muted">
-            Account type
-          </AppText>
-          <SegmentedControl<AccountType>
-            accessibilityLabel="Account type"
-            value={accountType}
-            onChange={setAccountType}
-            options={[
-              { value: 'player', label: 'Player' },
-              { value: 'admin', label: 'Admin' },
-            ]}
-          />
-          <AppText variant="small" tone="muted">
-            {accountType === 'admin'
-              ? 'Admins can also generate scenarios with AI, review them, and choose which ones appear in games.'
-              : 'Play scenarios, build streaks and track your progress.'}
-          </AppText>
-        </View>
       ) : null}
       <TextField
         label="Username"

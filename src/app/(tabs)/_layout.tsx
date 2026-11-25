@@ -1,6 +1,9 @@
+import { router } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
+import { useEffect } from 'react';
 
 import { Icon, type IconName } from '@/components/ui';
+import { pendingInvite } from '@/features/admin/pending-invite';
 import { useTheme } from '@/hooks/use-theme';
 import { useStatsStore } from '@/stores/stats-store';
 
@@ -15,6 +18,14 @@ const TABS: { name: string; title: string; icon: IconName; iconActive: IconName 
 export default function TabsLayout() {
   const { colors } = useTheme();
   const isAdmin = useStatsStore((s) => s.stats?.isAdmin ?? false);
+
+  // Someone opened an admin invite while signed out: bring them back to it once signed in.
+  useEffect(() => {
+    void pendingInvite.peek().then((code) => {
+      if (code) router.push({ pathname: '/invite/[code]', params: { code } });
+    });
+  }, []);
+
   return (
     <Tabs
       screenOptions={{

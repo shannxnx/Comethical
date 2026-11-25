@@ -45,6 +45,8 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animation: 'fade' }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="reset-password" />
+            {/* Admin invite links open here whether or not the person is signed in. */}
+            <Stack.Screen name="invite/[code]" />
             <Stack.Protected guard={ready && !hasOnboarded}>
               <Stack.Screen name="onboarding" />
             </Stack.Protected>

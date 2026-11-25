@@ -59,7 +59,8 @@
     "seed:sql": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-seed-sql.mjs",
     "sounds": "node scripts/generate-sounds.mjs",
     "db:setup-sql": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-seed-sql.mjs && node scripts/build-setup-sql.mjs",
-    "publish": "eas update --branch preview --environment preview"
+    "publish": "eas update --branch preview --environment preview",
+    "publish:web": "expo export --platform web && eas deploy --prod"
   },
   "private": true,
   "jest": {

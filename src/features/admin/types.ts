@@ -38,7 +38,7 @@ export interface AdminStats {
   averageDifficulty: number;
 }
 
-export type AdminSection = 'generate' | 'review' | 'library';
+export type AdminSection = 'generate' | 'review' | 'library' | 'invites';
 export type ReviewFilter = 'pending' | 'flagged' | 'rejected';
 export type Visibility = 'all' | 'in_game' | 'hidden' | 'not_approved';
 

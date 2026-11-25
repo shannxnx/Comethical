@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Share, View } from 'react-native';
 
 import { GeneratorPanel } from '@/components/admin/GeneratorPanel';
+import { InvitesSection } from '@/components/admin/InvitesSection';
 import { LibrarySection } from '@/components/admin/LibrarySection';
 import { ReviewSection } from '@/components/admin/ReviewSection';
 import { AppText, Banner, Chip, EmptyState, Icon, Screen, SegmentedControl, StatTile } from '@/components/ui';
@@ -20,7 +21,7 @@ export default function Admin() {
   const stats = useAdminStore((s) => s.stats);
   const error = useAdminStore((s) => s.error);
   const notice = useAdminStore((s) => s.notice);
-  const loading = useAdminStore((s) => s.reviewLoading || s.libraryLoading);
+  const loading = useAdminStore((s) => s.reviewLoading || s.libraryLoading || s.invitesLoading);
   const { setSection, refreshCurrent, clearMessages } = useAdminStore.getState();
   const [exporting, setExporting] = useState(false);
 
@@ -83,6 +84,7 @@ export default function Admin() {
           { value: 'generate', label: 'Generate' },
           { value: 'review', label: awaiting ? `Review (${awaiting})` : 'Review' },
           { value: 'library', label: 'Library' },
+          { value: 'invites', label: 'Invites' },
         ]}
       />
 
@@ -99,6 +101,7 @@ export default function Admin() {
 
       {section === 'generate' ? <GeneratorPanel /> : null}
       {section === 'review' ? <ReviewSection /> : null}
+      {section === 'invites' ? <InvitesSection /> : null}
       {section === 'library' ? (
         <>
           <LibrarySection />

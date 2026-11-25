@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
@@ -7,6 +7,7 @@ import { LevelCard } from '@/components/game/LevelCard';
 import { AppText, Avatar, Banner, Button, Icon, Screen, SectionHeader, SegmentedControl, Skeleton, StatTile, Surface, TextField, ToggleRow } from '@/components/ui';
 import type { ThemePreference } from '@/config/theme.config';
 import { getLevelProgress } from '@/core';
+import { parseInviteCode } from '@/features/admin/invite-api';
 import { validateUsername } from '@/features/auth/validation';
 import { formatPercent, overallAccuracy } from '@/features/analytics/insights';
 import { useTheme } from '@/hooks/use-theme';
@@ -27,6 +28,19 @@ export default function Profile() {
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [inviteText, setInviteText] = useState('');
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const openInvite = () => {
+    const code = parseInviteCode(inviteText);
+    if (!code) {
+      setInviteError('Paste the whole invite link or code you were sent.');
+      return;
+    }
+    setInviteError(null);
+    setInviteText('');
+    router.push({ pathname: '/invite/[code]', params: { code } });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -150,6 +164,26 @@ export default function Profile() {
           />
         </View>
       </Surface>
+
+      {!demo && stats && !stats.isAdmin ? (
+        <>
+          <SectionHeader title="Admin invite" />
+          <Surface className="gap-3">
+            <TextField
+              label="Invite link or code"
+              value={inviteText}
+              onChangeText={setInviteText}
+              error={inviteError}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="Paste the link an admin sent you"
+              returnKeyType="go"
+              onSubmitEditing={openInvite}
+            />
+            <Button label="Open invite" icon="shield-half" variant="secondary" onPress={openInvite} />
+          </Surface>
+        </>
+      ) : null}
 
       {demo ? (
         <>

@@ -67,7 +67,7 @@
     },
     "owner": "group1_se",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "sdkVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/3875a6df-96b7-4cc2-9027-15b373023e50"

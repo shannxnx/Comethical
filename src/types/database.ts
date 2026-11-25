@@ -121,12 +121,6 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
-      app_settings: {
-        Row: { id: boolean; allow_admin_signup: boolean; updated_at: string };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
       scenario_reports: {
         Row: {
           id: string;

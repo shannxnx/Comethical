@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { DIFFICULTY_TIERS } from '@/core';
 import { adminApi } from '@/features/admin/admin-api';
+import { inviteApi, type AdminInvite } from '@/features/admin/invite-api';
 import {
   DEFAULT_LIBRARY_FILTERS,
   type AdminScenario,
@@ -53,6 +54,9 @@ interface AdminState {
   libraryLoading: boolean;
   libraryLoadingMore: boolean;
 
+  invites: AdminInvite[];
+  invitesLoading: boolean;
+
   setSection: (s: AdminSection) => void;
   refreshReview: () => Promise<void>;
   setReviewFilter: (f: ReviewFilter) => void;
@@ -61,6 +65,8 @@ interface AdminState {
   setFilters: (patch: Partial<LibraryFilters>) => void;
   resetFilters: () => void;
   refreshCurrent: () => Promise<void>;
+  refreshInvites: () => Promise<void>;
+  revokeInvite: (id: string) => Promise<void>;
 
   generate: (req: GenerateRequest) => Promise<boolean>;
   save: (id: string, patch: ScenarioPatch, approve: boolean) => Promise<boolean>;
@@ -113,6 +119,8 @@ export const useAdminStore = create<AdminState>()((set, get) => {
     libraryMatching: 0,
     libraryLoading: false,
     libraryLoadingMore: false,
+    invites: [],
+    invitesLoading: false,
 
     setSection: (section) => {
       set({ section });
@@ -123,8 +131,28 @@ export const useAdminStore = create<AdminState>()((set, get) => {
       const { section } = get();
       if (section === 'review') await get().refreshReview();
       else if (section === 'library') await get().refreshLibrary();
+      else if (section === 'invites') await get().refreshInvites();
       else await get().refreshReview(); // keeps the stats fresh on the Generate screen
     },
+
+    refreshInvites: async () => {
+      set({ invitesLoading: true });
+      try {
+        const res = await inviteApi.list();
+        set({ invites: res.invites });
+      } catch (e) {
+        set({ error: toAppError(e).message });
+      } finally {
+        set({ invitesLoading: false });
+      }
+    },
+
+    revokeInvite: (id) =>
+      withBusy(id, async () => {
+        const res = await inviteApi.revoke(id);
+        const updated = res.invite;
+        if (updated) set((st) => ({ invites: st.invites.map((i) => (i.id === id ? updated : i)) }));
+      }),
 
     refreshReview: async () => {
       const token = ++reviewRequest;
