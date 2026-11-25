@@ -5,13 +5,14 @@ import { create } from 'zustand';
 import { getSupabase } from '@/lib/supabase';
 
 export type AuthStatus = 'initializing' | 'demo' | 'signedOut' | 'signedIn';
+export type AccountType = 'player' | 'admin';
 
 interface AuthState {
   status: AuthStatus;
   session: Session | null;
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, username: string) => Promise<{ needsConfirmation: boolean }>;
+  signUp: (email: string, password: string, username: string, accountType?: AccountType) => Promise<{ needsConfirmation: boolean }>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -54,13 +55,14 @@ export const useAuthStore = create<AuthState>()((set) => ({
     if (error) throw new Error(friendlyAuthError(error.message));
   },
 
-  signUp: async (email, password, username) => {
+  signUp: async (email, password, username, accountType = 'player') => {
     const supabase = getSupabase();
     if (!supabase) return { needsConfirmation: false };
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { username: username.trim() } },
+      // The database trigger reads account_type when creating the profile.
+      options: { data: { username: username.trim(), account_type: accountType } },
     });
     if (error) throw new Error(friendlyAuthError(error.message));
     return { needsConfirmation: !data.session };

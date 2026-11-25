@@ -83,7 +83,10 @@ async function list(admin: SupabaseClient, body: Record<string, unknown>) {
   let query = admin
     .from('scenarios')
     .select(COLUMNS, { count: 'exact' })
+    // Live scenarios first; switched-off and unapproved ones sink to the bottom.
+    .order('is_live', { ascending: false })
     .order('created_at', { ascending: false })
+    .order('id', { ascending: true }) // stable paging
     .range(offset, offset + limit - 1);
   if (statuses.length > 0) query = query.in('approval_status', statuses);
   if (search) query = query.ilike('scenario_text', likePattern(search));
