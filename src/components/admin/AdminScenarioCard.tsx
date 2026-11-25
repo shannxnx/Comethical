@@ -9,7 +9,7 @@ import { DIFFICULTY_FACTORS } from '@/core';
 import { STATUS_LABELS, type AdminScenario } from '@/features/admin/types';
 import { useTheme } from '@/hooks/use-theme';
 
-function ActionButton({
+export function ActionButton({
   label,
   icon,
   color,

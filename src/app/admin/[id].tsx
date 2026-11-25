@@ -15,7 +15,7 @@ const multiline = { fontSize: 16, minHeight: 88, textAlignVertical: 'top' as con
 export default function EditScenario() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const scenario = useAdminStore((s) => s.scenarios.find((x) => x.id === id));
+  const scenario = useAdminStore((s) => s.reviewItems.find((x) => x.id === id) ?? s.libraryItems.find((x) => x.id === id));
   const busy = useAdminStore((s) => !!(id && s.busy[id]));
   const serverError = useAdminStore((s) => s.error);
   const save = useAdminStore((s) => s.save);

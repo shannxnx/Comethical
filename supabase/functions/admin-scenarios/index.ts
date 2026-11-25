@@ -19,7 +19,7 @@ const MAX_PER_GENERATION = 5;
 const COLUMNS =
   'id, category_id, scenario_text, correct_answer, explanation, ethical_principles, recommended_action, learning_objective, ' +
   'difficulty_score, difficulty_reasoning, difficulty_factors, approval_status, generation_source, review_notes, ' +
-  'admin_instructions, times_answered, times_correct, created_at, reviewed_at';
+  'admin_instructions, times_answered, times_correct, created_at, reviewed_at, in_game';
 
 function toAdminScenario(r: Record<string, unknown>) {
   return {
@@ -42,6 +42,7 @@ function toAdminScenario(r: Record<string, unknown>) {
     timesCorrect: r.times_correct,
     createdAt: r.created_at,
     reviewedAt: r.reviewed_at,
+    inGame: r.in_game,
   };
 }
 
@@ -62,31 +63,76 @@ async function categoryName(admin: SupabaseClient, categoryId: unknown): Promise
 
 // ── actions ─────────────────────────────────────────────────────────────────
 
+/** Escapes LIKE wildcards so admin search text is matched literally. */
+function likePattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
 async function list(admin: SupabaseClient, body: Record<string, unknown>) {
-  const status = typeof body.status === 'string' && (STATUSES as readonly string[]).includes(body.status) ? body.status : null;
+  const statuses = (Array.isArray(body.statuses) ? body.statuses : typeof body.status === 'string' ? [body.status] : [])
+    .filter((x): x is Status => typeof x === 'string' && (STATUSES as readonly string[]).includes(x));
   const limit = Math.min(100, Math.max(1, Math.floor(Number(body.limit ?? 50))));
   const offset = Math.max(0, Math.floor(Number(body.offset ?? 0)));
+  const search = typeof body.search === 'string' ? body.search.trim().slice(0, 100) : '';
+  const categoryId = typeof body.categoryId === 'string' && body.categoryId ? body.categoryId : null;
+  const minDifficulty = Number.isInteger(body.minDifficulty) ? (body.minDifficulty as number) : null;
+  const maxDifficulty = Number.isInteger(body.maxDifficulty) ? (body.maxDifficulty as number) : null;
+  const source = body.source === 'ai' || body.source === 'seed' || body.source === 'manual' ? body.source : null;
+  const inGame = typeof body.inGame === 'boolean' ? body.inGame : null;
 
-  let query = admin.from('scenarios').select(COLUMNS).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
-  if (status) query = query.eq('approval_status', status);
-  const [{ data, error }, all] = await Promise.all([query, admin.from('scenarios').select('approval_status, difficulty_score').limit(10000)]);
+  let query = admin
+    .from('scenarios')
+    .select(COLUMNS, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (statuses.length > 0) query = query.in('approval_status', statuses);
+  if (search) query = query.ilike('scenario_text', likePattern(search));
+  if (categoryId) query = query.eq('category_id', categoryId);
+  if (minDifficulty !== null) query = query.gte('difficulty_score', minDifficulty);
+  if (maxDifficulty !== null) query = query.lte('difficulty_score', maxDifficulty);
+  if (source) query = query.eq('generation_source', source);
+  if (inGame !== null) query = query.eq('in_game', inGame);
+
+  const [{ data, error, count: matching }, all] = await Promise.all([
+    query,
+    admin.from('scenarios').select('approval_status, difficulty_score, in_game').limit(10000),
+  ]);
   if (error) throw new HttpError(500, 'db_error', error.message);
   if (all.error) throw new HttpError(500, 'db_error', all.error.message);
 
   const rows = all.data ?? [];
-  const count = (s: Status) => rows.filter((r) => r.approval_status === s).length;
-  const avg = rows.length ? rows.reduce((sum, r) => sum + (r.difficulty_score as number), 0) / rows.length : 0;
+  const count = (st: Status) => rows.filter((r) => r.approval_status === st).length;
+  const live = rows.filter((r) => r.approval_status === 'approved' && r.in_game);
+  const avg = live.length ? live.reduce((sum, r) => sum + (r.difficulty_score as number), 0) / live.length : 0;
   return {
     scenarios: (data ?? []).map((r) => toAdminScenario(r as unknown as Record<string, unknown>)),
+    matching: matching ?? 0,
     stats: {
       total: rows.length,
       drafts: count('pending'),
       flagged: count('flagged'),
       approved: count('approved'),
       rejected: count('rejected'),
+      live: live.length,
+      hidden: count('approved') - live.length,
       averageDifficulty: Math.round(avg * 10) / 10,
     },
   };
+}
+
+/** Switch approved scenarios in or out of games. Unapproved ones are never switched on. */
+async function setInGame(admin: SupabaseClient, body: Record<string, unknown>) {
+  const ids = Array.isArray(body.ids) ? body.ids.filter(isUuid).slice(0, 100) : [];
+  if (ids.length === 0) throw new HttpError(400, 'invalid_request', 'ids is required.');
+  if (typeof body.inGame !== 'boolean') throw new HttpError(400, 'invalid_request', 'inGame must be true or false.');
+  let query = admin.from('scenarios').update({ in_game: body.inGame }).in('id', ids);
+  if (body.inGame) query = query.eq('approval_status', 'approved');
+  const { data, error } = await query.select('id');
+  if (error) throw new HttpError(500, 'db_error', error.message);
+  if (body.inGame && (data ?? []).length < ids.length) {
+    throw new HttpError(409, 'not_approved', 'Only approved scenarios can be shown in games. Approve it first.');
+  }
+  return { scenarios: await loadByIds(admin, ids) };
 }
 
 async function generate(admin: SupabaseClient, userId: string, body: Record<string, unknown>) {
@@ -219,7 +265,7 @@ async function update(admin: SupabaseClient, userId: string, body: Record<string
     difficulty_reasoning: v.difficultyReasoning,
     learning_objective: v.learningObjective,
   };
-  if (body.approve === true) Object.assign(fields, { approval_status: 'approved', reviewed_by: userId, reviewed_at: new Date().toISOString() });
+  if (body.approve === true) Object.assign(fields, { approval_status: 'approved', in_game: true, reviewed_by: userId, reviewed_at: new Date().toISOString() });
   const { error } = await admin.from('scenarios').update(fields).eq('id', id);
   if (error) {
     if (error.code === '23505') throw new HttpError(409, 'duplicate', 'Another scenario already has this exact text.');
@@ -244,9 +290,12 @@ async function setStatus(admin: SupabaseClient, userId: string, body: Record<str
   if (status !== 'approved' && status !== 'rejected' && status !== 'pending') {
     throw new HttpError(400, 'invalid_request', 'status must be approved, rejected or pending.');
   }
+  // Approving switches a scenario into games; it can be switched off later from the Library.
+  const fields: Record<string, unknown> = { approval_status: status, reviewed_by: userId, reviewed_at: new Date().toISOString() };
+  if (status === 'approved') fields.in_game = true;
   const { error } = await admin
     .from('scenarios')
-    .update({ approval_status: status, reviewed_by: userId, reviewed_at: new Date().toISOString() })
+    .update(fields)
     .in('id', ids);
   if (error) throw new HttpError(500, 'db_error', error.message);
   return { scenarios: await loadByIds(admin, ids) };
@@ -270,6 +319,7 @@ async function exportApproved(admin: SupabaseClient) {
     .from('scenarios')
     .select('scenario_text, correct_answer, explanation, ethical_principles, recommended_action, difficulty_score, difficulty_reasoning, learning_objective, categories(name)')
     .eq('approval_status', 'approved')
+    .eq('in_game', true)
     .order('created_at', { ascending: true })
     .limit(5000);
   if (error) throw new HttpError(500, 'db_error', error.message);
@@ -301,6 +351,8 @@ serve(async (req) => {
       return json(await update(admin, user.id, body));
     case 'reassess':
       return json(await reassess(admin, body));
+    case 'set-in-game':
+      return json(await setInGame(admin, body));
     case 'set-status':
       return json(await setStatus(admin, user.id, body));
     case 'delete':

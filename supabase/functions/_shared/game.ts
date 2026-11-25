@@ -62,6 +62,7 @@ export async function loadApprovedPool(admin: SupabaseClient): Promise<PoolRow[]
     .from('scenarios')
     .select('id, category_id, difficulty_score, correct_answer, categories!inner(active)')
     .eq('approval_status', 'approved')
+    .eq('in_game', true)
     .eq('categories.active', true)
     .limit(5000);
   if (error) throw new HttpError(500, 'db_error', error.message);

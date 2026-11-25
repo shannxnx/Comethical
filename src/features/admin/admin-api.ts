@@ -1,7 +1,7 @@
 import { getSupabase } from '@/lib/supabase';
 import { parseFunctionError } from '@/services/online-repository';
 import { AppError } from '@/types/game';
-import type { AdminFilter, AdminScenario, AdminStats, GenerateRequest, GenerateResult, ScenarioPatch } from './types';
+import type { AdminScenario, AdminStats, GenerateRequest, GenerateResult, ListQuery, ScenarioPatch } from './types';
 
 /** Gemini generation can take a while (generation + an independent review per scenario). */
 const TIMEOUT_MS = 120_000;
@@ -26,15 +26,21 @@ async function call<T>(action: string, body: Record<string, unknown> = {}): Prom
   }
 }
 
+export interface ListResult {
+  scenarios: AdminScenario[];
+  matching: number;
+  stats: AdminStats;
+}
+
 export const adminApi = {
-  list: (status: AdminFilter) =>
-    call<{ scenarios: AdminScenario[]; stats: AdminStats }>('list', { status: status === 'all' ? undefined : status, limit: 100 }),
+  list: (query: ListQuery) => call<ListResult>('list', { limit: 50, ...query }),
   generate: (req: GenerateRequest) => call<GenerateResult>('generate', { ...req }),
   update: (id: string, patch: ScenarioPatch, approve = false) =>
     call<{ scenario: AdminScenario | null }>('update', { id, patch, approve }),
   reassess: (id: string) => call<{ scenario: AdminScenario | null }>('reassess', { id }),
   setStatus: (ids: string[], status: 'approved' | 'rejected' | 'pending') =>
     call<{ scenarios: AdminScenario[] }>('set-status', { ids, status }),
+  setInGame: (ids: string[], inGame: boolean) => call<{ scenarios: AdminScenario[] }>('set-in-game', { ids, inGame }),
   remove: (id: string) => call<{ deleted: boolean }>('delete', { id }),
   exportApproved: () => call<{ scenarios: unknown[] }>('export'),
 };
